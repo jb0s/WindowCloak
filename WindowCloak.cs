@@ -48,6 +48,11 @@ public class WindowCloak : ApplicationContext
                     var shouldHide = (!_config.Windows.ContainsKey(kvp.Value) || !_config.Windows[kvp.Value]) != _config.AllowByDefault;
                     var newAffinity = shouldHide ? (_config.FullyHideWindows ? 0x11 : 0x01) : 0x00;
                 
+                    // Don't touch windows that aren't hidden and shouldn't be hidden - prevents some apps misbehaving
+                    if (!shouldHide && !_hiddenWindows.ContainsKey(kvp.Key))
+                        continue;
+                    
+                    // Don't touch windows that are in the correct affinity
                     var shouldUpdate = !_hiddenWindows.ContainsKey(kvp.Key) || _hiddenWindows[kvp.Key] != newAffinity;
                     if(!shouldUpdate)
                         continue;
@@ -57,7 +62,11 @@ public class WindowCloak : ApplicationContext
                         WindowHandler.SetWindowDisplayAffinity(kvp.Key, 0x00);
                     
                     WindowHandler.SetWindowDisplayAffinity(kvp.Key, newAffinity);
-                    _hiddenWindows[kvp.Key] = newAffinity;
+                    
+                    if(newAffinity != 0x00)
+                        _hiddenWindows[kvp.Key] = newAffinity;
+                    else
+                        _hiddenWindows.Remove(kvp.Key);
                     
 #if DEBUG
                     Console.WriteLine("Updated window visibility for {0} ({1}): {2}", kvp.Key, kvp.Value, shouldHide);
